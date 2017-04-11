@@ -90,12 +90,38 @@ def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen, rate
         clienthost = addr[0]
         clientport = addr[1]
 
-        global last_connection_times
+        if ratelimit:
+            global last_connection_times
 
-        if ratelimit and clienthost in last_connection_times and last_connection_times[clienthost] >= (time.time() - ratelimit):
-            raise PasteSubmissionException('Rate limit exceeded', 'error://rate-limit-exceeded')
+            now = time.time()
 
-        last_connection_times[clienthost] = time.time()
+            if ratelimit == True:
+                # burstmode
+                if clienthost not in last_connection_times:
+                    last_connection_time = 0
+                    delay = 1
+                else:
+                    last_connection_time = last_connection_times[clienthost][0]
+                    delay = last_connection_times[clienthost][1]
+
+                if now < (last_connection_time + delay):
+                    raise PasteSubmissionException('Burst-mode rate limit exceeded', 'error://rate-limit-exceeded')
+
+                if now < (last_connection_time + (60*delay)):
+                    logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Increasing burst-mode delay for client')
+                    delay *= 2
+                else:
+                    logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Resetting burst-mode delay for client')
+                    delay = 1
+
+                last_connection_times[clienthost] = (now, delay)
+
+            else:
+                # normal ratelimit
+                if clienthost in last_connection_times and last_connection_times[clienthost] >= (now - ratelimit):
+                    raise PasteSubmissionException('Rate limit exceeded', 'error://rate-limit-exceeded')
+
+                last_connection_times[clienthost] = now
 
         data_buffer = []
 
@@ -296,12 +322,15 @@ def main():
     parser.add_argument('-s', '--maxsize', type=human2bytes, help='Maximum size for uploaded pastes (default: no limit)')
     parser.add_argument('-u', '--user', default='nobody', help='Drop to this user\'s privileges after binding to port')
     parser.add_argument('--ratelimit', type=float, help='Delay in seconds between consecutive pastes from the same IP')
+    parser.add_argument('--burstmode', action='store_true', help='Increase ratelimit exponentially')
 
     args = parser.parse_args()
 
     configure_logging(args.syslog, args.verbose)
 
-    start_server(args.port, '', args.user, args.datapath, args.maxsize, args.urlformat, args.strlen, args.ratelimit)
+    ratelimit = args.burstmode or args.ratelimit
+
+    start_server(args.port, '', args.user, args.datapath, args.maxsize, args.urlformat, args.strlen, ratelimit)
 
 if __name__ == "__main__":
     main()

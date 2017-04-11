@@ -8,6 +8,9 @@ import magic
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
+
+# It's ok if we run into a KeyError here, since these variables are needed
+# under all circumstances
 app.config['TIN_DATAPATH'] = os.environ['TIN_DATAPATH']
 app.config['TIN_INDEX'] = os.environ['TIN_INDEX']
 
@@ -34,29 +37,6 @@ def serve_file(path):
 def send_mime_file(path):
     mimetype = mime.from_file(path)
     return send_file(path, mimetype=mimetype, as_attachment=False)
-
-def portnumber_argtype(value):
-    try:
-        ivalue = int(value)
-    except ValueError:
-         raise argparse.ArgumentTypeError("'%s' is not a valid port number (should be an integer between 1 and 65535)" % value)
-
-    if not 1 <= ivalue <= 65535:
-         raise argparse.ArgumentTypeError("'%s' is not a valid port number (should be an integer between 1 and 65535)" % value)
-
-    return ivalue
-
-def directory_argtype(value):
-    if os.path.isdir(value):
-        return value
-    else:
-         raise argparse.ArgumentTypeError("'%s' is not a valid directory path" % value)
-
-def file_argtype(value):
-    if os.path.isdir(value):
-        return value
-    else:
-         raise argparse.ArgumentTypeError("'%s' is not a valid file path" % value)
 
 if __name__ == "__main__":
     app.run()

@@ -225,7 +225,7 @@ def exit_gracefully(signal_number, stack_frame):
 def configure_logging(to_syslog=False, verbose=False):
     class NoWarningOrHigherFilter(logging.Filter):
         def filter(self, record):
-            return not record.levelno > logging.WARNING
+            return not record.levelno >= logging.WARNING
 
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)

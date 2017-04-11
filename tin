@@ -1,0 +1,13 @@
+#!/bin/sh
+
+if [ "$#" -ge 1 ]
+then
+    for f in "$@"
+    do
+        printf '==> %s <==\n' "$f"
+        result=$(nc x7f.uk 44 < "$f")
+        printf '\t%s\n\t%s\n' "$result" "${result}.${f%%*.}"
+    done
+else
+    nc x7f.uk 44
+fi

@@ -12,6 +12,7 @@ import logging
 import logging.handlers
 import hashlib
 import base22
+from humanbytes import human2bytes
 
 
 server_socket = None
@@ -75,13 +76,12 @@ class PasteSubmissionException(Exception):
         self.client_response = client_response
 
 
-def handle_connection(conn, addr, datapath, urlformat, strlen):
+def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen):
     try:
         data_buffer = []
-        maxfilesize = 20000000
 
         while True:
-            if len(data_buffer) > maxfilesize/4096:
+            if maxfilesize and len(data_buffer) > maxfilesize/4096:
                 raise PasteSubmissionException('Maximum file size exceeded', 'error://maximum-filesize-exceeded')
 
             data = conn.recv(4096)
@@ -164,7 +164,7 @@ def handle_connection(conn, addr, datapath, urlformat, strlen):
     logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Connection closed')
 
 
-def start_server(port, host, datapath, urlformat, strlen):
+def start_server(port, host, datapath, maxfilesize, urlformat, strlen):
     logging.getLogger('tin-tcp-recv').info('Starting TCP server on %s:%d...' % (host, port))
 
     global server_socket
@@ -201,7 +201,7 @@ def start_server(port, host, datapath, urlformat, strlen):
 
         threading.Thread(
                 target=handle_connection,
-                args=(conn, addr, datapath, urlformat, strlen),
+                args=(conn, addr, datapath, maxfilesize, urlformat, strlen),
             ).start()
 
     server_socket.close()
@@ -270,12 +270,13 @@ def main():
     parser.add_argument('-l', '--strlen', type=strlen_type, default=6)
     parser.add_argument('--urlformat', type=str, help='Format string of what will be returned to uploading clients. %s will be replaced with the paste filename.')
     parser.add_argument('--datapath', type=directory_type, required=True, help='The directory where pastes will be stored')
+    parser.add_argument('-s', '--maxsize', type=human2bytes, help='Maximum size for uploaded pastes (default: no limit)')
 
     args = parser.parse_args()
 
     configure_logging(args.syslog, args.verbose)
 
-    start_server(args.port, '', args.datapath, args.urlformat, args.strlen)
+    start_server(args.port, '', args.datapath, args.maxsize, args.urlformat, args.strlen)
 
 if __name__ == "__main__":
     main()

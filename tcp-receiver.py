@@ -13,6 +13,7 @@ import logging.handlers
 import hashlib
 import base22
 from humanbytes import human2bytes
+import time
 
 
 server_socket = None
@@ -76,8 +77,18 @@ class PasteSubmissionException(Exception):
         self.client_response = client_response
 
 
-def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen):
+def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen, ratelimit):
     try:
+        clienthost = addr[0]
+        clientport = addr[1]
+
+        global last_connection_times
+
+        if ratelimit and clienthost in last_connection_times and last_connection_times[clienthost] >= (time.time() - ratelimit):
+            raise PasteSubmissionException('Rate limit exceeded', 'error://rate-limit-exceeded')
+
+        last_connection_times[clienthost] = time.time()
+
         data_buffer = []
 
         while True:
@@ -164,8 +175,12 @@ def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen):
     logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Connection closed')
 
 
-def start_server(port, host, unpriv_user, datapath, maxfilesize, urlformat, strlen):
+def start_server(port, host, unpriv_user, datapath, maxfilesize, urlformat, strlen, ratelimit):
     logging.getLogger('tin-tcp-recv').info('Starting TCP server on %s:%d...' % (host, port))
+
+    if ratelimit:
+        global last_connection_times
+        last_connection_times = {}
 
     global server_socket
 
@@ -201,7 +216,7 @@ def start_server(port, host, unpriv_user, datapath, maxfilesize, urlformat, strl
 
         threading.Thread(
                 target=handle_connection,
-                args=(conn, addr, datapath, maxfilesize, urlformat, strlen),
+                args=(conn, addr, datapath, maxfilesize, urlformat, strlen, ratelimit),
             ).start()
 
     server_socket.close()
@@ -272,12 +287,13 @@ def main():
     parser.add_argument('--datapath', type=directory_type, required=True, help='The directory where pastes will be stored')
     parser.add_argument('-s', '--maxsize', type=human2bytes, help='Maximum size for uploaded pastes (default: no limit)')
     parser.add_argument('-u', '--user', default='nobody', help='Drop to this user\'s privileges after binding to port')
+    parser.add_argument('--ratelimit', type=float, help='Delay in seconds between consecutive pastes from the same IP')
 
     args = parser.parse_args()
 
     configure_logging(args.syslog, args.verbose)
 
-    start_server(args.port, '', args.user, args.datapath, args.maxsize, args.urlformat, args.strlen)
+    start_server(args.port, '', args.user, args.datapath, args.maxsize, args.urlformat, args.strlen, args.ratelimit)
 
 if __name__ == "__main__":
     main()

@@ -78,6 +78,14 @@ class PasteSubmissionException(Exception):
 
 
 def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen, ratelimit):
+    def send(s):
+        try:
+            conn.sendall(bytearray('%s\n' % s, "utf_8"))
+        except BrokenPipeError:
+            logging.getLogger('[%s]:%d' % (addr[0], addr[1])).warn('Client has gone away')
+        except Exception as e:
+            logging.getLogger('[%s]:%d' % (addr[0], addr[1])).error('Error: %s' % str(e))
+
     try:
         clienthost = addr[0]
         clientport = addr[1]
@@ -141,7 +149,7 @@ def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen, rate
                 else:
                     url = 'http://%s/%s' % (conn.getsockname()[0], base22hash)
 
-                conn.sendall(bytearray('%s\n' % url, "utf_8"))
+                send(url)
 
             else:
                 raise PasteSubmissionException('File \'%s\' already exists; content differs' % filepath, 'error://hash-collision--modify-a-byte-and-try-again')
@@ -158,18 +166,18 @@ def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen, rate
                 else:
                     url = 'http://%s/%s' % (conn.getsockname()[0], base22hash)
 
-                conn.sendall(bytearray('%s\n' % url, "utf_8"))
+                send(url)
 
             except Exception as e:
                 raise PasteSubmissionException('Error while writing to file: \'%s\'' % str(e), 'error://could-not-write-file')
 
     except PasteSubmissionException as e:
         logging.getLogger('[%s]:%d' % (addr[0], addr[1])).warn('%s' % e.message)
-        conn.sendall(bytearray('%s\n' % e.client_response, "utf_8"))
+        send(e.client_response)
 
     except Exception as e:
         logging.getLogger('[%s]:%d' % (addr[0], addr[1])).error('Error: %s' % str(e))
-        conn.sendall(bytearray('error://\n', "utf_8"))
+        send('error://')
 
     conn.close()
     logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Connection closed')

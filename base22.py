@@ -7,7 +7,7 @@ BITSPERBYTE = 8
 CONSO = 'bcdfghjkmnpqstvwxyz'
 VOWEL = 'aeu'
 
-def bytearray_to_base22(b, strlen=7):
+def bytearray_to_base22(b, strlen=6):
     STRLEN = strlen
 
     PAIRCOMBINATIONS = len(CONSO)*len(VOWEL)

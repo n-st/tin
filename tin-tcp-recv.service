@@ -5,7 +5,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/opt/tin/tcp-receiver.py --port 44 --user pastetin --datapath /var/lib/tin/data/ --urlformat 'http://x7f.uk/%%s' --maxsize 10M
+ExecStart=/opt/tin/tcp-receiver.py --port 44 --user pastetin --datapath /var/lib/tin/data/ --urlformat 'http://x7f.uk/%%s' --maxsize 10M --ratelimit 5 -v
 KillMode=mixed
 Restart=always
 

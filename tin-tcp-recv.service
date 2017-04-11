@@ -1,0 +1,13 @@
+[Unit]
+Description=Tin paste receiver (raw TCP)
+Requires=network.target
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/opt/tin/tcp-receiver.py --port 44 --user pastetin --datapath /var/lib/tin/data/ --urlformat 'http://x7f.uk/%s' --maxsize 10M
+KillMode=mixed
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

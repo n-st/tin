@@ -39,6 +39,12 @@ def strlen_type(value):
 
     return ivalue
 
+def directory_type(value):
+    if os.path.isdir(value):
+        return value
+    else:
+         raise argparse.ArgumentTypeError("'%s' is not a valid directory path" % value)
+
 
 def drop_privileges(uid_name='nobody', gid_name='nogroup'):
     """ Source: http://stackoverflow.com/a/2699996/1114687 """
@@ -61,75 +67,107 @@ def drop_privileges(uid_name='nobody', gid_name='nogroup'):
     # Ensure a very conservative umask
     old_umask = os.umask(0o077)
 
+class PasteSubmissionException(Exception):
+    def __init__(self, message, client_response):
+        super(Exception, self).__init__(message)
 
-def handle_connection(conn, addr, strlen):
-    all_data = b''
+        self.message = message
+        self.client_response = client_response
 
-    while True:
-        data = conn.recv(1024)
 
-        if not data:
-            break
+def handle_connection(conn, addr, datapath, urlformat, strlen):
+    try:
+        data_buffer = []
+        maxfilesize = 20000000
 
-        all_data += data
+        while True:
+            if len(data_buffer) > maxfilesize/4096:
+                raise PasteSubmissionException('Maximum file size exceeded', 'error://maximum-filesize-exceeded')
 
-    logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('%d bytes received' % len(all_data))
+            data = conn.recv(4096)
 
-    hasher = hashlib.sha256()
-    hasher.update(all_data)
-    input_digest = hasher.digest()
-    base22hash = base22.bytearray_to_base22(input_digest, strlen=strlen)
+            if not data:
+                break
 
-    logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Computed hash: %s' % base22hash)
+            data_buffer.append(data)
 
-    filepath = 'data/%s' % base22hash
+        all_data = b''.join(data_buffer)
+        del data_buffer
 
-    if os.path.exists(filepath):
-        existing_size = os.path.getsize(filepath)
-        input_size = len(all_data)
+        logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('%d bytes received' % len(all_data))
 
-        if existing_size == input_size:
-            hasher = hashlib.sha256()
-            with open(filepath, "rb") as f:
-                for chunk in iter(lambda: f.read(4096), b""):
-                    hasher.update(chunk)
+        hasher = hashlib.sha256()
+        hasher.update(all_data)
+        input_digest = hasher.digest()
+        base22hash = base22.bytearray_to_base22(input_digest, strlen=strlen)
 
-            existing_digest = hasher.digest()
+        logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Computed hash: %s' % base22hash)
 
-            is_same_file = (existing_digest == input_digest)
+        filepath = os.path.join(datapath, base22hash)
+
+        if os.path.exists(filepath):
+            existing_size = os.path.getsize(filepath)
+            input_size = len(all_data)
+
+            if existing_size == input_size:
+                hasher = hashlib.sha256()
+                with open(filepath, "rb") as f:
+                    for chunk in iter(lambda: f.read(4096), b''):
+                        hasher.update(chunk)
+
+                existing_digest = hasher.digest()
+
+                is_same_file = (existing_digest == input_digest)
+
+            else:
+                is_same_file = False
+
+            if is_same_file:
+                logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('File \'%s\' already exists; content identical' % filepath)
+
+                if urlformat:
+                    url = urlformat % base22hash
+                else:
+                    url = 'http://%s/%s' % (conn.getsockname()[0], base22hash)
+
+                conn.sendall(bytearray('%s\n' % url, "utf_8"))
+
+            else:
+                raise PasteSubmissionException('File \'%s\' already exists; content differs' % filepath, 'error://hash-collision--modify-a-byte-and-try-again')
 
         else:
-            is_same_file = False
+            try:
+                with open('data/%s' % base22hash, 'xb') as f:
+                    f.write(all_data)
 
-        if is_same_file:
-            logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('File \'%s\' already exists; content identical' % filepath)
-            conn.sendall(bytearray('http://%s/%s\n' % (conn.getsockname()[0], base22hash), "utf_8"))
+                logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('File stored')
 
-        else:
-            logging.getLogger('[%s]:%d' % (addr[0], addr[1])).warning('File \'%s\' already exists; content differs' % filepath)
-            conn.sendall(bytearray('error://hash-collision--modify-a-byte-and-try-again\n', "utf_8"))
+                if urlformat:
+                    url = urlformat % base22hash
+                else:
+                    url = 'http://%s/%s' % (conn.getsockname()[0], base22hash)
 
-    else:
-        try:
-            with open('data/%s' % base22hash, 'xb') as f:
-                f.write(all_data)
+                conn.sendall(bytearray('%s\n' % url, "utf_8"))
 
-            logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('File stored')
-            conn.sendall(bytearray('http://%s/%s\n' % (conn.getsockname()[0], base22hash), "utf_8"))
+            except Exception as e:
+                raise PasteSubmissionException('Error while writing to file: \'%s\'' % str(e), 'error://could-not-write-file')
 
-        except Exception as e:
-            logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Error while writing to file: \'%s\'' % str(e))
-            conn.sendall(bytearray('error://could-not-write-file\n', "utf_8"))
+    except PasteSubmissionException as e:
+        logging.getLogger('[%s]:%d' % (addr[0], addr[1])).warn('%s' % e.message)
+        conn.sendall(bytearray('%s\n' % e.client_response, "utf_8"))
+
+    except Exception as e:
+        logging.getLogger('[%s]:%d' % (addr[0], addr[1])).error('Error: %s' % str(e))
+        conn.sendall(bytearray('error://\n', "utf_8"))
 
     conn.close()
     logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Connection closed')
 
 
-def start_server(port, host=''):
+def start_server(port, host, datapath, urlformat, strlen):
     logging.getLogger('tin-tcp-recv').info('Starting TCP server on %s:%d...' % (host, port))
 
     global server_socket
-    global strlen
 
     server_socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
 
@@ -163,7 +201,7 @@ def start_server(port, host=''):
 
         threading.Thread(
                 target=handle_connection,
-                args=(conn, addr, strlen),
+                args=(conn, addr, datapath, urlformat, strlen),
             ).start()
 
     server_socket.close()
@@ -230,15 +268,14 @@ def main():
     parser.add_argument('--syslog', action='store_true', help='Send log messages to syslog instead of stdout/stderr')
     parser.add_argument('-p', '--port', type=portnumber, required=True)
     parser.add_argument('-l', '--strlen', type=strlen_type, default=6)
+    parser.add_argument('--urlformat', type=str, help='Format string of what will be returned to uploading clients. %s will be replaced with the paste filename.')
+    parser.add_argument('--datapath', type=directory_type, required=True, help='The directory where pastes will be stored')
 
     args = parser.parse_args()
 
     configure_logging(args.syslog, args.verbose)
 
-    global strlen
-    strlen = args.strlen
-
-    start_server(args.port)
+    start_server(args.port, '', args.datapath, args.urlformat, args.strlen)
 
 if __name__ == "__main__":
     main()

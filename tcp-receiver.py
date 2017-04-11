@@ -77,19 +77,49 @@ def handle_connection(conn, addr, strlen):
 
     hasher = hashlib.sha256()
     hasher.update(all_data)
-    base22hash = base22.bytearray_to_base22(hasher.digest(), strlen=strlen)
+    input_digest = hasher.digest()
+    base22hash = base22.bytearray_to_base22(input_digest, strlen=strlen)
 
     logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Computed hash: %s' % base22hash)
 
-    try:
-        with open('data/%s' % base22hash, 'xb') as f:
-            f.write(all_data)
+    filepath = 'data/%s' % base22hash
 
-        logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('File stored')
-        conn.sendall(bytearray('%s\n' % base22hash, "utf_8"))
+    if os.path.exists(filepath):
+        existing_size = os.path.getsize(filepath)
+        input_size = len(all_data)
 
-    except Exception as e:
-        logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Error while writing to file: \'%s\'' % str(e))
+        if existing_size == input_size:
+            hasher = hashlib.sha256()
+            with open(filepath, "rb") as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hasher.update(chunk)
+
+            existing_digest = hasher.digest()
+
+            is_same_file = (existing_digest == input_digest)
+
+        else:
+            is_same_file = False
+
+        if is_same_file:
+            logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('File \'%s\' already exists; content identical' % filepath)
+            conn.sendall(bytearray('http://%s/%s\n' % (conn.getsockname()[0], base22hash), "utf_8"))
+
+        else:
+            logging.getLogger('[%s]:%d' % (addr[0], addr[1])).warning('File \'%s\' already exists; content differs' % filepath)
+            conn.sendall(bytearray('error://hash-collision--modify-a-byte-and-try-again\n', "utf_8"))
+
+    else:
+        try:
+            with open('data/%s' % base22hash, 'xb') as f:
+                f.write(all_data)
+
+            logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('File stored')
+            conn.sendall(bytearray('http://%s/%s\n' % (conn.getsockname()[0], base22hash), "utf_8"))
+
+        except Exception as e:
+            logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Error while writing to file: \'%s\'' % str(e))
+            conn.sendall(bytearray('error://could-not-write-file\n', "utf_8"))
 
     conn.close()
     logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Connection closed')

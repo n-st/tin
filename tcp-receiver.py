@@ -263,7 +263,7 @@ def main():
     signal.signal(signal.SIGINT, exit_gracefully)
     signal.signal(signal.SIGTERM, exit_gracefully)
 
-    parser = argparse.ArgumentParser(description='Accepts data on a TCP port and forwards it to http://ix.io/')
+    parser = argparse.ArgumentParser(description='Accepts data on a TCP port, stores it locally, and returns the filename/URL to the client')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('--syslog', action='store_true', help='Send log messages to syslog instead of stdout/stderr')
     parser.add_argument('-p', '--port', type=portnumber, required=True)

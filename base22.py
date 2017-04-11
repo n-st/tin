@@ -4,33 +4,34 @@ import hashlib
 from math import log2
 
 BITSPERBYTE = 8
-
 CONSO = 'bcdfghjkmnpqstvwxyz'
 VOWEL = 'aeu'
-STRLEN = 6
-PAIRCOMBINATIONS = len(CONSO)*len(VOWEL)
-PAIRCOUNT = int(STRLEN/2)
-SINGLECOMBINATIONS = len(CONSO)
-SINGLECOUNT = int(STRLEN%2)
-# compute number of combinations, assuming CVCVCV... sequence
-COMBINATIONS = (PAIRCOMBINATIONS ** PAIRCOUNT) * (SINGLECOMBINATIONS ** SINGLECOUNT)
-BITS = int(log2(COMBINATIONS))
-MAXNUM = 2**BITS
 
-def getpair(ordval):
-    assert ordval >= 0
-    assert ordval < PAIRCOMBINATIONS
-    consoindex = int( ordval / len(VOWEL) )
-    vowelindex = int( ordval % len(VOWEL) )
-    return CONSO[consoindex] + VOWEL[vowelindex]
+def bytearray_to_base22(b, strlen=7):
+    STRLEN = strlen
 
-def getsingle(ordval):
-    assert ordval >= 0
-    assert ordval < SINGLECOMBINATIONS
-    consoindex = int( ordval / len(VOWEL) )
-    return CONSO[consoindex]
+    PAIRCOMBINATIONS = len(CONSO)*len(VOWEL)
+    PAIRCOUNT = int(STRLEN/2)
+    SINGLECOMBINATIONS = len(CONSO)
+    SINGLECOUNT = int(STRLEN%2)
+    # compute number of combinations, assuming CVCVCV... sequence
+    COMBINATIONS = (PAIRCOMBINATIONS ** PAIRCOUNT) * (SINGLECOMBINATIONS ** SINGLECOUNT)
+    BITS = int(log2(COMBINATIONS))
+    MAXNUM = 2**BITS
 
-def bytearray_to_base22(b):
+    def getpair(ordval):
+        assert ordval >= 0
+        assert ordval < PAIRCOMBINATIONS
+        consoindex = int( ordval / len(VOWEL) )
+        vowelindex = int( ordval % len(VOWEL) )
+        return CONSO[consoindex] + VOWEL[vowelindex]
+
+    def getsingle(ordval):
+        assert ordval >= 0
+        assert ordval < SINGLECOMBINATIONS
+        consoindex = int( ordval / len(VOWEL) )
+        return CONSO[consoindex]
+
     n = 0
     shift = BITS
     byteindex = 0

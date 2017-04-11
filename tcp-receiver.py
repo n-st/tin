@@ -96,7 +96,7 @@ def handle_connection(conn, addr, strlen):
 
 
 def start_server(port, host=''):
-    logging.getLogger('proxio').info('Starting TCP server on %s:%d...' % (host, port))
+    logging.getLogger('tin-tcp-recv').info('Starting TCP server on %s:%d...' % (host, port))
 
     global server_socket
     global strlen
@@ -107,16 +107,16 @@ def start_server(port, host=''):
         server_socket.bind((host, port))
 
     except OSError as err:
-        logging.getLogger('proxio').error('Bind failed: [Errno %d] %s' % (err.errno, err.strerror))
+        logging.getLogger('tin-tcp-recv').error('Bind failed: [Errno %d] %s' % (err.errno, err.strerror))
         sys.exit(err.errno)
 
     if os.getuid() == 0:
-        logging.getLogger('proxio').info('Port bound, dropping privileges...')
+        logging.getLogger('tin-tcp-recv').info('Port bound, dropping privileges...')
         try:
             drop_privileges()
 
         except Exception as e:
-            logging.getLogger('proxio').error('Error while trying to drop privileges: \'%s\'. Better safe than sorry, so let\'s stop right here.' % str(e))
+            logging.getLogger('tin-tcp-recv').error('Error while trying to drop privileges: \'%s\'. Better safe than sorry, so let\'s stop right here.' % str(e))
             try:
                 sys.exit(e.errno)
             except AttributeError:
@@ -124,7 +124,7 @@ def start_server(port, host=''):
                 sys.exit(-1)
 
     server_socket.listen(10)
-    logging.getLogger('proxio').info('Now listening.')
+    logging.getLogger('tin-tcp-recv').info('Now listening.')
 
     while True:
         # wait to accept a connection - blocking call
@@ -141,15 +141,15 @@ def start_server(port, host=''):
 
 
 def exit_gracefully(signal_number, stack_frame):
-    logging.getLogger('proxio').info('Received signal %d, preparing to exit.' % signal_number)
+    logging.getLogger('tin-tcp-recv').info('Received signal %d, preparing to exit.' % signal_number)
 
     global server_socket
 
     if server_socket is not None:
-        logging.getLogger('proxio').info('Closing server socket.')
+        logging.getLogger('tin-tcp-recv').info('Closing server socket.')
         server_socket.close()
 
-    logging.getLogger('proxio').info('Terminating now.')
+    logging.getLogger('tin-tcp-recv').info('Terminating now.')
 
     sys.exit(0)
 

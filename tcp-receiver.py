@@ -137,7 +137,7 @@ def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen):
 
         else:
             try:
-                with open('data/%s' % base22hash, 'xb') as f:
+                with open(filepath, 'xb') as f:
                     f.write(all_data)
 
                 logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('File stored')

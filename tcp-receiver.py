@@ -164,7 +164,7 @@ def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen):
     logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('Connection closed')
 
 
-def start_server(port, host, datapath, maxfilesize, urlformat, strlen):
+def start_server(port, host, unpriv_user, datapath, maxfilesize, urlformat, strlen):
     logging.getLogger('tin-tcp-recv').info('Starting TCP server on %s:%d...' % (host, port))
 
     global server_socket
@@ -181,7 +181,7 @@ def start_server(port, host, datapath, maxfilesize, urlformat, strlen):
     if os.getuid() == 0:
         logging.getLogger('tin-tcp-recv').info('Port bound, dropping privileges...')
         try:
-            drop_privileges()
+            drop_privileges(unpriv_user)
 
         except Exception as e:
             logging.getLogger('tin-tcp-recv').error('Error while trying to drop privileges: \'%s\'. Better safe than sorry, so let\'s stop right here.' % str(e))
@@ -271,12 +271,13 @@ def main():
     parser.add_argument('--urlformat', type=str, help='Format string of what will be returned to uploading clients. %s will be replaced with the paste filename.')
     parser.add_argument('--datapath', type=directory_type, required=True, help='The directory where pastes will be stored')
     parser.add_argument('-s', '--maxsize', type=human2bytes, help='Maximum size for uploaded pastes (default: no limit)')
+    parser.add_argument('-u', '--user', default='nobody', help='Drop to this user\'s privileges after binding to port')
 
     args = parser.parse_args()
 
     configure_logging(args.syslog, args.verbose)
 
-    start_server(args.port, '', args.datapath, args.maxsize, args.urlformat, args.strlen)
+    start_server(args.port, '', args.user, args.datapath, args.maxsize, args.urlformat, args.strlen)
 
 if __name__ == "__main__":
     main()

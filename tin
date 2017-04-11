@@ -6,7 +6,7 @@ then
     do
         printf '==> %s <==\n' "$f"
         result=$(nc x7f.uk 44 < "$f")
-        printf '\t%s\n\t%s\n' "$result" "${result}.${f%%*.}"
+        printf '\t%s\n\t%s\n' "$result" "${result}.${f##*.}"
     done
 else
     nc x7f.uk 44

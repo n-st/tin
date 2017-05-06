@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # encoding: utf-8 (as per PEP 263)
 
-from flask import Flask, Response, send_file, abort
+from flask import Flask, Response, send_file, abort, redirect
 from werkzeug.contrib.fixers import ProxyFix
 import os
 import magic
@@ -30,13 +30,28 @@ def serve_file(path):
     filename = parts[0]
     filepath = os.path.join(app.config['TIN_DATAPATH'], filename)
     if os.path.isfile(filepath):
+        with open(filepath, 'r') as f:
+            # limit URL to reasonable length (as per RFC 7230, 3.1.1)
+            line = f.readline(8 * 1024)
+            # Make sure this was the only line in the file
+            # This also involves checking the length limit, because we might
+            # have stopped short of the end of the first line. If that's the
+            # case, the line is so long we don't want to process it anyway.
+            if len(line) < (8 * 1024) and f.readline(1) == '':
+                if line.startswith('http://') or line.startswith('https://'):
+                    return redirect_to_url(line.strip())
+
         return send_mime_file(filepath)
+
     else:
         abort(404)
 
 def send_mime_file(path):
     mimetype = mime.from_file(path)
     return send_file(path, mimetype=mimetype, as_attachment=False)
+
+def redirect_to_url(url):
+    return redirect(url, code=303)
 
 if __name__ == "__main__":
     app.run()

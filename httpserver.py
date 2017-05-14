@@ -27,7 +27,7 @@ def root():
 @app.route('/<path>')
 def serve_file(path):
     parts = path.split('.', 2)
-    filename = parts[0]
+    filename = parts[0].lower()
     filepath = os.path.join(app.config['TIN_DATAPATH'], filename)
     if os.path.isfile(filepath):
         try:

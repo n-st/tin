@@ -7,12 +7,15 @@ import os
 import magic
 
 app = Flask(__name__)
-#app.wsgi_app = ProxyFix(app.wsgi_app)
 
 # It's ok if we run into a KeyError here, since these variables are needed
 # under all circumstances
 app.config['TIN_DATAPATH'] = os.environ['TIN_DATAPATH']
 app.config['TIN_INDEX'] = os.environ['TIN_INDEX']
+app.config['TIN_REVERSEPROXY'] = os.environ['TIN_REVERSEPROXY']
+
+if app.config['TIN_REVERSEPROXY']:
+    app.wsgi_app = ProxyFix(app.wsgi_app)
 
 mime = magic.Magic(mime=True)
 

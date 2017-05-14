@@ -8,6 +8,7 @@ Environment=PYTHONPATH=/opt/tin/
 Environment=TIN_PORT=80
 Environment=TIN_DATAPATH=/var/lib/tin/data/
 Environment=TIN_INDEX=/var/lib/tin/index.html
+Environment=TIN_REVERSEPROXY=0
 
 Type=simple
 ExecStart=/usr/local/bin/twistd --nodaemon --uid pastetin --gid nogroup web --port "tcp6:${TIN_PORT}" --wsgi httpserver.app

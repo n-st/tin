@@ -11,7 +11,7 @@ Environment=TIN_INDEX=/var/lib/tin/index.html
 Environment=TIN_REVERSEPROXY=0
 
 Type=simple
-ExecStart=/usr/local/bin/twistd --nodaemon --uid pastetin --gid nogroup web --port "tcp6:${TIN_PORT}" --wsgi httpserver.app
+ExecStart=/usr/bin/env twistd --nodaemon --uid pastetin --gid nogroup web --port "tcp6:${TIN_PORT}" --wsgi httpserver.app
 KillMode=mixed
 Restart=always
 

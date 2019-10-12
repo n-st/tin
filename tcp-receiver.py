@@ -123,10 +123,10 @@ def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen, rate
 
                 last_connection_times[clienthost] = now
 
-        data_buffer = []
+        all_data = b''
 
         while True:
-            if maxfilesize and len(data_buffer) > maxfilesize/4096:
+            if maxfilesize and len(all_data) > maxfilesize:
                 raise PasteSubmissionException('Maximum file size exceeded', 'error://maximum-filesize-exceeded')
 
             data = conn.recv(4096)
@@ -134,10 +134,7 @@ def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen, rate
             if not data:
                 break
 
-            data_buffer.append(data)
-
-        all_data = b''.join(data_buffer)
-        del data_buffer
+            all_data += data
 
         logging.getLogger('[%s]:%d' % (addr[0], addr[1])).info('%d bytes received' % len(all_data))
 

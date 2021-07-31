@@ -4,8 +4,10 @@ Requires=network.target
 After=network.target
 
 [Service]
+EnvironmentFile=/etc/tin.conf
+
 Type=simple
-ExecStart=/opt/tin/tcp-receiver.py --port 44 --user pastetin --datapath /var/lib/tin/data/ --urlformat 'http://x7f.uk/%%s' --maxsize 10M --burstmode -v
+ExecStart=/usr/bin/env python3 "${PYTHONPATH}/tcp-receiver.py" --port "${TIN_TCP_PORT}" --user "${TIN_USER}" --datapath "${TIN_DATAPATH}" --urlformat "${TIN_URLFORMAT}" --maxsize "${TIN_MAXSIZE}" "${TIN_BURSTMODE}" -v
 KillMode=mixed
 Restart=always
 

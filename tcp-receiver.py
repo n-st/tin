@@ -192,7 +192,7 @@ def handle_connection(conn, addr, datapath, maxfilesize, urlformat, strlen, rate
                 send(url)
 
             except Exception as e:
-                raise PasteSubmissionException('Error while writing to file: \'%s\'' % str(e), 'error://could-not-write-file')
+                raise PasteSubmissionException('Error while writing to file: \'%s\'' % str(e), 'error://serverside-error')
 
     except PasteSubmissionException as e:
         logging.getLogger('[%s]:%d' % (addr[0], addr[1])).warn('%s' % e.message)

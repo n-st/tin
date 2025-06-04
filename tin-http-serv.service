@@ -7,7 +7,7 @@ After=network.target
 EnvironmentFile=/etc/tin.conf
 
 Type=simple
-ExecStart=/usr/bin/env twistd --nodaemon --uid "${TIN_USER}" --gid nogroup web --listen "${TIN_HTTP_LISTEN}" --wsgi httpserver.app
+ExecStart=/usr/bin/env twistd3 --nodaemon --uid "${TIN_USER}" --gid nogroup --pidfile "${PIDFILE}" web --listen "${TIN_HTTP_LISTEN}" --wsgi httpserver.app
 KillMode=mixed
 Restart=always
 

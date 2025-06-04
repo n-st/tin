@@ -2,7 +2,7 @@
 # encoding: utf-8 (as per PEP 263)
 
 from flask import Flask, Response, send_file, abort, redirect
-from werkzeug.contrib.fixers import ProxyFix
+from werkzeug.middleware.proxy_fix import ProxyFix
 import os
 import magic
 
